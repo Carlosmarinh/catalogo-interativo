@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Sparkles, AlertTriangle, SearchX } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Sparkles, AlertTriangle, SearchX, Radar, ArrowRight } from 'lucide-react';
 import { useCatalog } from '../context/CatalogContext';
+import { getCustomerOrderNumbers } from './OrderTrackingPage';
 import { StoreHeader } from '../components/storefront/StoreHeader';
 import {
   CategoryTabs,
@@ -11,9 +13,16 @@ import { FloatingCartBar } from '../components/storefront/FloatingCartBar';
 import { CheckoutModal } from '../components/storefront/CheckoutModal';
 
 export const StorefrontPage: React.FC = () => {
-  const { store, categories, products, loading } = useCatalog();
+  const { store, categories, products, orders, loading } = useCatalog();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const myOrderNums = getCustomerOrderNumbers();
+  const activeCustomerOrder = orders.find(
+    (o) =>
+      myOrderNums.includes(Number(o.order_number)) &&
+      (o.status === 'pending' || o.status === 'preparing' || o.status === 'delivering')
+  );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -68,6 +77,34 @@ export const StorefrontPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-28">
       <StoreHeader store={store} />
+
+      {/* Banner de Acompanhamento de Pedido Ativo do Cliente */}
+      {activeCustomerOrder && (
+        <div className="bg-emerald-600 text-white px-4 py-2.5 shadow-sm">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold">
+              <Radar className="w-4 h-4 shrink-0 animate-pulse" />
+              <span>
+                Pedido #{activeCustomerOrder.order_number} em andamento:{' '}
+                <strong className="underline">
+                  {activeCustomerOrder.status === 'pending'
+                    ? 'Aguardando Confirmação'
+                    : activeCustomerOrder.status === 'preparing'
+                    ? 'Em Preparo na Cozinha'
+                    : 'Saiu para Entrega / Pronto'}
+                </strong>
+              </span>
+            </div>
+            <Link
+              to={`/pedido/${activeCustomerOrder.order_number}`}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-emerald-800 text-xs font-extrabold shrink-0 hover:bg-emerald-50 transition-colors"
+            >
+              <span>Acompanhar</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Aviso de Loja Fechada */}
       {!store.is_open && (

@@ -132,14 +132,14 @@ create policy "Leitura publica de produtos"
 drop policy if exists "Lojistas gerenciam sua loja" on public.stores;
 create policy "Lojistas gerenciam sua loja"
   on public.stores for all
-  to authenticated
+  to anon, authenticated
   using (owner_id is null or owner_id = auth.uid())
   with check (owner_id is null or owner_id = auth.uid());
 
 drop policy if exists "Lojistas gerenciam categorias" on public.categories;
 create policy "Lojistas gerenciam categorias"
   on public.categories for all
-  to authenticated
+  to anon, authenticated
   using (
     exists (
       select 1 from public.stores s
@@ -158,7 +158,7 @@ create policy "Lojistas gerenciam categorias"
 drop policy if exists "Lojistas gerenciam produtos" on public.products;
 create policy "Lojistas gerenciam produtos"
   on public.products for all
-  to authenticated
+  to anon, authenticated
   using (
     exists (
       select 1 from public.stores s
