@@ -165,7 +165,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setStore(nextStore);
     localStorage.setItem(KEYS.STORE, JSON.stringify(nextStore));
 
-    if (supabase && usingRemoteDb && user) {
+    if (supabase && usingRemoteDb) {
       const { error } = await supabase
         .from('stores')
         .update({
@@ -182,7 +182,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
           updated_at: nextStore.updated_at,
         })
         .eq('id', store.id);
-      if (error) return { error: error.message };
+      if (error && user) return { error: error.message };
     }
     return {};
   };
@@ -216,12 +216,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProducts(nextList);
     localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(nextList));
 
-    if (supabase && usingRemoteDb && user) {
+    if (supabase && usingRemoteDb) {
       const query = isEditing
         ? supabase.from('products').update(record).eq('id', id)
         : supabase.from('products').insert([record]);
       const { error } = await query;
-      if (error) return { error: error.message };
+      if (error && user) return { error: error.message };
     }
     return {};
   };
@@ -231,9 +231,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProducts(nextList);
     localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(nextList));
 
-    if (supabase && usingRemoteDb && user) {
+    if (supabase && usingRemoteDb) {
       const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) return { error: error.message };
+      if (error && user) return { error: error.message };
     }
     return {};
   };
@@ -271,12 +271,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories(nextList);
     localStorage.setItem(KEYS.CATEGORIES, JSON.stringify(nextList));
 
-    if (supabase && usingRemoteDb && user) {
+    if (supabase && usingRemoteDb) {
       const query = isEditing
         ? supabase.from('categories').update(record).eq('id', id)
         : supabase.from('categories').insert([record]);
       const { error } = await query;
-      if (error) return { error: error.message };
+      if (error && user) return { error: error.message };
     }
     return {};
   };
@@ -291,9 +291,9 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories(nextList);
     localStorage.setItem(KEYS.CATEGORIES, JSON.stringify(nextList));
 
-    if (supabase && usingRemoteDb && user) {
+    if (supabase && usingRemoteDb) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
-      if (error) return { error: error.message };
+      if (error && user) return { error: error.message };
     }
     return {};
   };
