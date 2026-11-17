@@ -52,6 +52,14 @@ const PAYMENT_NAMES: Record<Order['payment_method'], string> = {
   cash: 'Dinheiro',
 };
 
+const STATUS_WHATSAPP_TEXT: Record<OrderStatus, string> = {
+  pending: 'Recebemos o seu pedido e já vamos iniciar o preparo!',
+  preparing: 'Boas notícias! Seu pedido já está sendo preparado na nossa cozinha!',
+  delivering: 'Seu pedido acabou de sair para entrega (ou está pronto para retirada no balcão)!',
+  completed: 'Seu pedido foi entregue! Muito obrigado pela preferência e bom apetite!',
+  cancelled: 'Seu pedido precisou ser cancelado. Entre em contato conosco para mais detalhes.',
+};
+
 export const OrdersManagerPanel: React.FC = () => {
   const { orders, updateOrderStatus, deleteOrder } = useCatalog();
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -263,14 +271,18 @@ export const OrdersManagerPanel: React.FC = () => {
                         href={`https://wa.me/${sanitizeWhatsAppNumber(
                           order.customer_phone
                         )}?text=${encodeURIComponent(
-                          `Olá ${order.customer_name}! Recebemos o seu Pedido #${order.order_number} e já estamos preparando!`
+                          `Olá ${order.customer_name}! Sobre o seu *Pedido #${order.order_number}*:\n\n${
+                            STATUS_WHATSAPP_TEXT[order.status]
+                          }\n\nAcompanhe em tempo real aqui:\n${
+                            window.location.origin
+                          }/pedido/${order.order_number}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Avisar Cliente</span>
+                        <span>Avisar Status no WhatsApp</span>
                       </a>
                     )}
                   </div>

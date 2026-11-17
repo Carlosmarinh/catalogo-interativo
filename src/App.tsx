@@ -6,6 +6,7 @@ import { CartProvider } from './context/CartContext';
 import { StorefrontPage } from './pages/StorefrontPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { OrderTrackingPage } from './pages/OrderTrackingPage';
 
 export const App: React.FC = () => {
   return (
@@ -15,6 +16,8 @@ export const App: React.FC = () => {
           <CartProvider>
             <Routes>
               <Route path="/" element={<StorefrontPage />} />
+              <Route path="/pedido" element={<OrderTrackingPage />} />
+              <Route path="/pedido/:orderNumber" element={<OrderTrackingPage />} />
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route path="/admin/painel" element={<AdminDashboardPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

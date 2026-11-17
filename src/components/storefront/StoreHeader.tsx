@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Sparkles,
   ShoppingBag,
+  Radar,
 } from 'lucide-react';
 import { Store } from '../../types/catalog';
 import { formatCurrency } from '../../lib/whatsapp';
@@ -29,13 +30,22 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store }) => {
               <strong className="text-white">ZapCatálogo</strong> • Cardápio Digital Interativo
             </span>
           </div>
-          <Link
-            to="/admin"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 transition-colors font-medium"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
-            <span>Painel do Lojista</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/pedido"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500 hover:bg-orange-400 text-white transition-colors font-bold"
+            >
+              <Radar className="w-3.5 h-3.5" />
+              <span>Rastrear Pedido</span>
+            </Link>
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 transition-colors font-medium"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
+              <span>Painel do Lojista</span>
+            </Link>
+          </div>
         </div>
       </div>
 

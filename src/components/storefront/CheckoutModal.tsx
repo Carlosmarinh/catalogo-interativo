@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Trash2,
@@ -14,6 +15,7 @@ import {
   AlertCircle,
   Eye,
   CheckCircle2,
+  Radar,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useCatalog } from '../../context/CatalogContext';
@@ -23,6 +25,7 @@ import {
   formatCurrency,
   getEffectivePrice,
 } from '../../lib/whatsapp';
+import { saveCustomerOrderNumber } from '../../pages/OrderTrackingPage';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -37,6 +40,12 @@ export const CheckoutModal: React.FC = () => {
     clearCart,
   } = useCart();
   const { store, createOrder } = useCatalog();
+  const navigate = useNavigate();
+  const draftOrderCode = useMemo(
+    () => Math.floor(1000 + Math.random() * 9000),
+    [isCheckoutOpen]
+  );
+  const [lastCreatedOrderNum, setLastCreatedOrderNum] = useState<number | null>(null);
 
   const [form, setForm] = useState<CheckoutForm>({
     customerName: '',
@@ -68,6 +77,7 @@ export const CheckoutModal: React.FC = () => {
     subtotal,
     deliveryFee,
     total,
+    orderCode: draftOrderCode,
   });
 
   const handleDeliveryChange = (method: DeliveryMethod) => {
@@ -121,7 +131,8 @@ export const CheckoutModal: React.FC = () => {
           }`
         : `Retirada no Balcão (${store.address})`;
 
-    await createOrder({
+    const created = await createOrder({
+      order_number: draftOrderCode,
       customer_name: form.customerName.trim(),
       customer_phone: form.customerPhone.trim(),
       delivery_method: form.deliveryMethod,
@@ -140,6 +151,9 @@ export const CheckoutModal: React.FC = () => {
       total,
       whatsapp_message: whatsappMessage,
     });
+
+    saveCustomerOrderNumber(created.order_number);
+    setLastCreatedOrderNum(created.order_number);
 
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     setOrderSentSuccess(true);
@@ -175,24 +189,30 @@ export const CheckoutModal: React.FC = () => {
           {orderSentSuccess && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="flex-1 text-sm text-emerald-900">
+              <div className="flex-1 text-sm text-emerald-900 space-y-2">
                 <strong className="font-bold block">
-                  Janela do WhatsApp aberta com o seu pedido!
+                  Pedido #{lastCreatedOrderNum || draftOrderCode} registrado com sucesso!
                 </strong>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  Caso não tenha aberto automaticamente, clique novamente no botão verde abaixo ou limpe a sacola se já enviou.
+                <p className="text-xs text-emerald-700">
+                  Você pode acompanhar cada etapa do preparo e entrega em tempo real clicando no botão abaixo:
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearCart();
-                    setOrderSentSuccess(false);
-                    setIsCheckoutOpen(false);
-                  }}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-800 underline cursor-pointer"
-                >
-                  Já enviei meu pedido (Limpar sacola)
-                </button>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearCart();
+                      setOrderSentSuccess(false);
+                      setIsCheckoutOpen(false);
+                      navigate(`/pedido/${lastCreatedOrderNum || draftOrderCode}`);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-xs cursor-pointer"
+                  >
+                    <Radar className="w-4 h-4" />
+                    <span>
+                      Acompanhar Pedido #{lastCreatedOrderNum || draftOrderCode} ao Vivo
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

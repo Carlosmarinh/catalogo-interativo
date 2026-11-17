@@ -53,6 +53,7 @@ export function buildWhatsAppOrderMessage({
   subtotal,
   deliveryFee,
   total,
+  orderCode: providedCode,
 }: {
   store: Store;
   items: CartItem[];
@@ -60,8 +61,13 @@ export function buildWhatsAppOrderMessage({
   subtotal: number;
   deliveryFee: number;
   total: number;
+  orderCode?: number;
 }): string {
-  const orderCode = Math.floor(1000 + Math.random() * 9000);
+  const orderCode = providedCode || Math.floor(1000 + Math.random() * 9000);
+  const trackingUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/pedido/${orderCode}`
+      : '';
   const now = new Date().toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -134,6 +140,11 @@ export function buildWhatsAppOrderMessage({
   );
   lines.push(`*TOTAL A PAGAR: ${formatCurrency(total)}*`);
   lines.push(`--------------------------------`);
+  if (trackingUrl) {
+    lines.push(`*ACOMPANHE O STATUS AO VIVO:*`);
+    lines.push(trackingUrl);
+    lines.push(`--------------------------------`);
+  }
   lines.push(`Aguardo a confirmação do pedido!`);
 
   return lines.join('\n');
@@ -146,6 +157,7 @@ export function buildWhatsAppOrderUrl(params: {
   subtotal: number;
   deliveryFee: number;
   total: number;
+  orderCode?: number;
 }): { url: string; message: string } {
   const message = buildWhatsAppOrderMessage(params);
   const phone = sanitizeWhatsAppNumber(params.store.whatsapp_number);

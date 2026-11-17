@@ -33,7 +33,11 @@ interface CatalogContextData {
   toggleProductFeatured: (id: string) => Promise<{ error?: string }>;
   saveCategory: (data: Omit<Category, 'id' | 'store_id'> & { id?: string }) => Promise<{ error?: string }>;
   deleteCategory: (id: string) => Promise<{ error?: string }>;
-  createOrder: (orderData: Omit<Order, 'id' | 'order_number' | 'store_id' | 'status' | 'created_at'>) => Promise<Order>;
+  createOrder: (
+    orderData: Omit<Order, 'id' | 'order_number' | 'store_id' | 'status' | 'created_at'> & {
+      order_number?: number;
+    }
+  ) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   resetDemoData: () => void;
@@ -299,9 +303,12 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const createOrder = async (
-    orderData: Omit<Order, 'id' | 'order_number' | 'store_id' | 'status' | 'created_at'>
+    orderData: Omit<Order, 'id' | 'order_number' | 'store_id' | 'status' | 'created_at'> & {
+      order_number?: number;
+    }
   ): Promise<Order> => {
-    const orderNumber = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber =
+      orderData.order_number || Math.floor(1000 + Math.random() * 9000);
     const newOrder: Order = {
       ...orderData,
       id: crypto.randomUUID(),
