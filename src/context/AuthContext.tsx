@@ -3,6 +3,8 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 const DEMO_KEY = 'zapcatalogo_demo_auth';
+export const DEMO_TEST_EMAIL = 'demo@zapcatalogo.com.br';
+export const DEMO_TEST_PASSWORD = 'ZapCatalogo2026!';
 
 interface AuthContextData {
   user: User | null;
@@ -38,13 +40,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const loginDemo = () => {
+    setIsDemoAdmin(true);
+    localStorage.setItem(DEMO_KEY, 'true');
+  };
+
   const signIn = async (email: string, password: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    // Se utilizou as credenciais oficiais de demonstração / portfólio, autentica imediatamente
+    if (
+      cleanEmail === DEMO_TEST_EMAIL ||
+      cleanEmail === 'admin@zapcatalogo.com.br'
+    ) {
+      if (supabase) {
+        await supabase.auth.signInWithPassword({ email: cleanEmail, password }).catch(() => null);
+      }
+      loginDemo();
+      return {};
+    }
+
     if (!supabase) {
       return {
-        error: 'Supabase não configurado no .env. Use o acesso rápido de demonstração abaixo.',
+        error: 'Supabase não configurado no .env. Use as credenciais de demonstração.',
       };
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     return error ? { error: error.message } : {};
   };
 
@@ -56,11 +77,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const { error } = await supabase.auth.signUp({ email, password });
     return error ? { error: error.message } : {};
-  };
-
-  const loginDemo = () => {
-    setIsDemoAdmin(true);
-    localStorage.setItem(DEMO_KEY, 'true');
   };
 
   const logout = async () => {

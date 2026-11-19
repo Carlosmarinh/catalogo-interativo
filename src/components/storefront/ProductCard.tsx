@@ -10,7 +10,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) => {
-  const { addItem, decrementItem, getItemQuantity } = useCart();
+  const { openProductModal, decrementItem, getItemQuantity } = useCart();
   const quantityInCart = getItemQuantity(product.id);
   const effectivePrice = getEffectivePrice(product);
   const hasPromo =
@@ -20,14 +20,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) 
 
   const isDisabled = !product.is_available || !storeOpen;
 
+  const handleCardClick = () => {
+    if (!product.is_available) return;
+    openProductModal(product);
+  };
+
   return (
     <article
+      onClick={handleCardClick}
       className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row sm:flex-col justify-between p-3 sm:p-0 ${
         !product.is_available
           ? 'border-slate-200/70 opacity-65 grayscale-[35%]'
           : quantityInCart > 0
-          ? 'border-orange-500 ring-1 ring-orange-500/30 shadow-md shadow-orange-500/5'
-          : 'border-slate-200/80 hover:border-slate-300 hover:shadow-md'
+          ? 'border-orange-500 ring-1 ring-orange-500/30 shadow-md shadow-orange-500/5 cursor-pointer'
+          : 'border-slate-200/80 hover:border-slate-300 hover:shadow-md cursor-pointer'
       }`}
     >
       {/* Imagem no Desktop (Topo) e no Mobile (Lateral Direita) */}
@@ -65,7 +71,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) 
       {/* Informações do Produto */}
       <div className="order-1 sm:order-2 flex-1 flex flex-col justify-between sm:p-4 min-w-0">
         <div>
-          <h3 className="font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-2">
+          <h3 className="font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
             {product.name}
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">
@@ -74,7 +80,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) 
         </div>
 
         {/* Rodapé de Preço e Botão Adicionar */}
-        <div className="mt-3 pt-2.5 sm:border-t sm:border-slate-100 flex items-center justify-between gap-2">
+        <div
+          className="mt-3 pt-2.5 sm:border-t sm:border-slate-100 flex items-center justify-between gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div>
             {hasPromo && (
               <span className="block text-[11px] text-slate-400 line-through font-medium">
@@ -106,8 +115,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) 
               <button
                 type="button"
                 disabled={isDisabled}
-                onClick={() => addItem(product)}
-                aria-label="Aumentar quantidade"
+                onClick={() => openProductModal(product)}
+                aria-label="Personalizar e adicionar mais"
                 className="w-7 h-7 rounded-lg bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -117,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, storeOpen }) 
             <button
               type="button"
               disabled={isDisabled}
-              onClick={() => addItem(product)}
+              onClick={() => openProductModal(product)}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 storeOpen
                   ? 'bg-orange-500 hover:bg-orange-600 active:scale-95 text-white shadow-xs shadow-orange-500/25'

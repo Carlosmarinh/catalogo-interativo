@@ -28,6 +28,8 @@ interface CatalogContextData {
   updateStoreSettings: (patch: Partial<Store>) => Promise<{ error?: string }>;
   toggleStoreOpen: () => Promise<{ error?: string }>;
   saveProduct: (data: Omit<Product, 'id' | 'store_id'> & { id?: string }) => Promise<{ error?: string }>;
+  duplicateProduct: (id: string) => Promise<{ error?: string }>;
+  uploadProductImage: (file: File) => Promise<{ url?: string; error?: string }>;
   deleteProduct: (id: string) => Promise<{ error?: string }>;
   toggleProductAvailability: (id: string) => Promise<{ error?: string }>;
   toggleProductFeatured: (id: string) => Promise<{ error?: string }>;
@@ -210,6 +212,7 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
       image_url: data.image_url.trim(),
       is_available: data.is_available,
       is_featured: data.is_featured,
+      addons: data.addons,
       updated_at: new Date().toISOString(),
     };
 
@@ -221,13 +224,111 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(nextList));
 
     if (supabase && usingRemoteDb) {
+      const dbPayload = {
+        id: record.id,
+        store_id: record.store_id,
+        category_id: record.category_id,
+        name: record.name,
+        description: record.description,
+        price: record.price,
+        promo_price: record.promo_price,
+        image_url: record.image_url,
+        is_available: record.is_available,
+        is_featured: record.is_featured,
+        updated_at: record.updated_at,
+      };
       const query = isEditing
-        ? supabase.from('products').update(record).eq('id', id)
-        : supabase.from('products').insert([record]);
+        ? supabase.from('products').update(dbPayload).eq('id', id)
+        : supabase.from('products').insert([dbPayload]);
       const { error } = await query;
       if (error && user) return { error: error.message };
     }
     return {};
+  };
+
+  const duplicateProduct = async (id: string) => {
+    const original = products.find((p) => p.id === id);
+    if (!original) return { error: 'Produto original não encontrado.' };
+
+    return saveProduct({
+      category_id: original.category_id,
+      name: `${original.name} (Cópia)`,
+      description: original.description,
+      price: original.price,
+      promo_price: original.promo_price,
+      image_url: original.image_url,
+      is_available: original.is_available,
+      is_featured: false,
+      addons: original.addons,
+    });
+  };
+
+  const uploadProductImage = async (
+    file: File
+  ): Promise<{ url?: string; error?: string }> => {
+    // 1. Tenta enviar diretamente para o Supabase Storage (bucket 'product-images')
+    if (supabase) {
+      try {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const filePath = `products/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          if (data?.publicUrl) {
+            return { url: data.publicUrl };
+          }
+        }
+      } catch {
+        // Continua para o fallback otimizado caso o bucket ainda não exista
+      }
+    }
+
+    // 2. Fallback resiliente: converte e otimiza a imagem via Canvas para Data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 900;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve({ url: canvas.toDataURL('image/jpeg', 0.84) });
+          } else {
+            resolve({ url: String(reader.result) });
+          }
+        };
+        img.onerror = () => resolve({ error: 'Arquivo de imagem inválido.' });
+        img.src = String(reader.result);
+      };
+      reader.onerror = () => resolve({ error: 'Falha ao ler o arquivo selecionado.' });
+      reader.readAsDataURL(file);
+    });
   };
 
   const deleteProduct = async (id: string) => {
@@ -373,6 +474,8 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateStoreSettings,
         toggleStoreOpen,
         saveProduct,
+        duplicateProduct,
+        uploadProductImage,
         deleteProduct,
         toggleProductAvailability,
         toggleProductFeatured,

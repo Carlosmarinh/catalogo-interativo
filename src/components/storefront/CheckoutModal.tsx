@@ -16,6 +16,8 @@ import {
   Eye,
   CheckCircle2,
   Radar,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useCatalog } from '../../context/CatalogContext';
@@ -23,7 +25,7 @@ import { CheckoutForm, DeliveryMethod, PaymentMethod } from '../../types/catalog
 import {
   buildWhatsAppOrderUrl,
   formatCurrency,
-  getEffectivePrice,
+  getCartItemUnitPrice,
 } from '../../lib/whatsapp';
 import { saveCustomerOrderNumber } from '../../pages/OrderTrackingPage';
 
@@ -33,14 +35,15 @@ export const CheckoutModal: React.FC = () => {
     subtotal,
     isCheckoutOpen,
     setIsCheckoutOpen,
-    addItem,
-    decrementItem,
+    incrementCartItem,
+    decrementCartItem,
     removeItem,
     updateItemNotes,
     clearCart,
   } = useCart();
   const { store, createOrder } = useCatalog();
   const navigate = useNavigate();
+
   const draftOrderCode = useMemo(
     () => Math.floor(1000 + Math.random() * 9000),
     [isCheckoutOpen]
@@ -55,6 +58,7 @@ export const CheckoutModal: React.FC = () => {
     neighborhood: '',
     complement: '',
     paymentMethod: 'pix',
+    needChange: true,
     cashChangeFor: '',
     generalNotes: '',
   });
@@ -62,6 +66,7 @@ export const CheckoutModal: React.FC = () => {
   const [showMessagePreview, setShowMessagePreview] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
   if (!isCheckoutOpen) return null;
 
@@ -88,6 +93,24 @@ export const CheckoutModal: React.FC = () => {
   const handlePaymentChange = (method: PaymentMethod) => {
     setForm((prev) => ({ ...prev, paymentMethod: method }));
     setValidationError(null);
+  };
+
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(whatsappMessage);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 3000);
+    } catch {
+      // Fallback caso clipboard não esteja disponível
+      const textarea = document.createElement('textarea');
+      textarea.value = whatsappMessage;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 3000);
+    }
   };
 
   const handleSendWhatsApp = async (e: React.FormEvent) => {
@@ -118,7 +141,19 @@ export const CheckoutModal: React.FC = () => {
       }
       if (!form.streetAndNumber.trim() || !form.neighborhood.trim()) {
         setValidationError(
-          'Preencha sua Rua, Número e Bairro para realizarmos a entrega.'
+          'Para pedidos de Entrega, o preenchimento do Endereço (Rua/Número e Bairro) é obrigatório.'
+        );
+        return;
+      }
+    }
+
+    if (form.paymentMethod === 'cash' && form.needChange && form.cashChangeFor.trim()) {
+      const parsedChange = Number(form.cashChangeFor.replace(',', '.'));
+      if (!isNaN(parsedChange) && parsedChange < total) {
+        setValidationError(
+          `O valor para troco (${formatCurrency(
+            parsedChange
+          )}) deve ser maior que o total do pedido (${formatCurrency(total)}).`
         );
         return;
       }
@@ -138,12 +173,16 @@ export const CheckoutModal: React.FC = () => {
       delivery_method: form.deliveryMethod,
       address_summary: addressSummary,
       payment_method: form.paymentMethod,
-      cash_change_for: form.cashChangeFor.trim(),
+      cash_change_for:
+        form.paymentMethod === 'cash' && form.needChange
+          ? form.cashChangeFor.trim()
+          : '',
       items: items.map((i) => ({
         product_id: i.product.id,
         name: i.product.name,
         quantity: i.quantity,
-        unit_price: getEffectivePrice(i.product),
+        unit_price: getCartItemUnitPrice(i),
+        addons: i.selectedAddons,
         notes: i.notes.trim(),
       })),
       subtotal,
@@ -166,7 +205,7 @@ export const CheckoutModal: React.FC = () => {
         <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-lg font-extrabold tracking-tight">
-              Finalizar Pedido
+              Finalizar Pedido #{draftOrderCode}
             </h2>
             <p className="text-xs text-slate-400">
               Revise seus itens e envie direto para o WhatsApp de {store.name}
@@ -237,10 +276,10 @@ export const CheckoutModal: React.FC = () => {
 
             <div className="space-y-3">
               {items.map((item) => {
-                const price = getEffectivePrice(item.product);
+                const unitPrice = getCartItemUnitPrice(item);
                 return (
                   <div
-                    key={item.product.id}
+                    key={item.cartItemId}
                     className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -255,8 +294,8 @@ export const CheckoutModal: React.FC = () => {
                             {item.product.name}
                           </h4>
                           <span className="text-xs font-semibold text-orange-600">
-                            {formatCurrency(price)} un. • Total:{' '}
-                            {formatCurrency(price * item.quantity)}
+                            {formatCurrency(unitPrice)} un. • Total:{' '}
+                            {formatCurrency(unitPrice * item.quantity)}
                           </span>
                         </div>
                       </div>
@@ -266,8 +305,8 @@ export const CheckoutModal: React.FC = () => {
                           type="button"
                           onClick={() =>
                             item.quantity === 1
-                              ? removeItem(item.product.id)
-                              : decrementItem(item.product.id)
+                              ? removeItem(item.cartItemId)
+                              : decrementCartItem(item.cartItemId)
                           }
                           className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 cursor-pointer"
                         >
@@ -278,7 +317,7 @@ export const CheckoutModal: React.FC = () => {
                         </span>
                         <button
                           type="button"
-                          onClick={() => addItem(item.product)}
+                          onClick={() => incrementCartItem(item.cartItemId)}
                           className="w-7 h-7 rounded-lg bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -286,14 +325,30 @@ export const CheckoutModal: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Lista de Adicionais Pagos Selecionados */}
+                    {item.selectedAddons && item.selectedAddons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {item.selectedAddons.map((addon) => (
+                          <span
+                            key={addon.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-100/80 text-orange-900 text-[11px] font-bold"
+                          >
+                            + {addon.name} ({formatCurrency(addon.price)})
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Campo de observação individual por item */}
                     <div className="relative">
                       <MessageSquare className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={item.notes}
-                        onChange={(e) => updateItemNotes(item.product.id, e.target.value)}
-                        placeholder="Alguma observação neste item? (Ex: Sem cebola, bem passado)"
+                        onChange={(e) =>
+                          updateItemNotes(item.cartItemId, e.target.value)
+                        }
+                        placeholder="Observação do item (Ex: Sem cebola, ponto bem passado)"
                         className="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg border border-slate-200 text-xs text-slate-700 placeholder:text-slate-400 focus:border-orange-500 outline-none"
                       />
                     </div>
@@ -332,10 +387,7 @@ export const CheckoutModal: React.FC = () => {
                     Entrega (Delivery)
                   </span>
                   <span className="text-xs text-slate-500">
-                    Taxa:{' '}
-                    {store.delivery_fee === 0
-                      ? 'Grátis'
-                      : formatCurrency(store.delivery_fee)}
+                    +{store.delivery_fee === 0 ? 'Grátis' : formatCurrency(store.delivery_fee)}
                   </span>
                 </div>
               </button>
@@ -373,7 +425,7 @@ export const CheckoutModal: React.FC = () => {
           {/* 3. Dados do Cliente e Endereço */}
           <section className="space-y-3">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-              3. Seus Dados {form.deliveryMethod === 'delivery' && 'e Endereço'}
+              3. Seus Dados {form.deliveryMethod === 'delivery' && 'e Endereço de Entrega (Obrigatório)'}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -414,7 +466,7 @@ export const CheckoutModal: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      required
+                      required={form.deliveryMethod === 'delivery'}
                       value={form.streetAndNumber}
                       onChange={(e) =>
                         setForm({ ...form, streetAndNumber: e.target.value })
@@ -430,7 +482,7 @@ export const CheckoutModal: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      required
+                      required={form.deliveryMethod === 'delivery'}
                       value={form.neighborhood}
                       onChange={(e) =>
                         setForm({ ...form, neighborhood: e.target.value })
@@ -464,7 +516,7 @@ export const CheckoutModal: React.FC = () => {
             )}
           </section>
 
-          {/* 4. Forma de Pagamento */}
+          {/* 4. Forma de Pagamento Inteligente */}
           <section className="space-y-3">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
               4. Forma de Pagamento
@@ -511,18 +563,59 @@ export const CheckoutModal: React.FC = () => {
               </button>
             </div>
 
+            {/* Bloco Condicional de Troco para Dinheiro */}
             {form.paymentMethod === 'cash' && (
-              <div className="pt-1">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Precisa de troco para quanto? (Deixe em branco se não precisar)
-                </label>
-                <input
-                  type="text"
-                  value={form.cashChangeFor}
-                  onChange={(e) => setForm({ ...form, cashChangeFor: e.target.value })}
-                  placeholder="Ex: 100,00"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:border-orange-500 outline-none"
-                />
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-amber-950">
+                    Opções de Troco em Dinheiro
+                  </span>
+
+                  <label className="inline-flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!form.needChange}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          needChange: !e.target.checked,
+                          cashChangeFor: e.target.checked ? '' : form.cashChangeFor,
+                        })
+                      }
+                      className="w-4 h-4 accent-orange-500 rounded"
+                    />
+                    <span>Não preciso de troco</span>
+                  </label>
+                </div>
+
+                {form.needChange && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Troco para quanto? (R$)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={form.cashChangeFor}
+                        onChange={(e) =>
+                          setForm({ ...form, cashChangeFor: e.target.value })
+                        }
+                        placeholder="Ex: 100,00"
+                        className="flex-1 px-3.5 py-2 bg-white rounded-xl border border-amber-300 text-sm focus:border-orange-500 outline-none"
+                      />
+                      {['50,00', '100,00', '200,00'].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setForm({ ...form, cashChangeFor: val })}
+                          className="px-2.5 py-2 rounded-xl bg-white hover:bg-amber-100 border border-amber-200 text-xs font-bold text-amber-900 cursor-pointer"
+                        >
+                          R$ {val.split(',')[0]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -542,7 +635,7 @@ export const CheckoutModal: React.FC = () => {
               </span>
             </div>
             <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-              <span className="text-sm font-bold">Total do Pedido</span>
+              <span className="text-sm font-bold">Total Geral a Pagar</span>
               <span className="text-xl font-extrabold text-orange-400">
                 {formatCurrency(total)}
               </span>
@@ -557,13 +650,13 @@ export const CheckoutModal: React.FC = () => {
                 <Eye className="w-3.5 h-3.5" />
                 <span>
                   {showMessagePreview
-                    ? 'Ocultar prévia da mensagem do WhatsApp'
-                    : 'Ver prévia da mensagem formatada para o WhatsApp'}
+                    ? 'Ocultar comanda formatada para a cozinha'
+                    : 'Ver prévia da comanda organizada para o WhatsApp'}
                 </span>
               </button>
 
               {showMessagePreview && (
-                <pre className="mt-2 p-3 rounded-xl bg-slate-950 text-emerald-300 text-[11px] font-mono whitespace-pre-wrap leading-relaxed border border-slate-800 max-h-44 overflow-y-auto">
+                <pre className="mt-2 p-3 rounded-xl bg-slate-950 text-emerald-300 text-[11px] font-mono whitespace-pre-wrap leading-relaxed border border-slate-800 max-h-48 overflow-y-auto">
                   {whatsappMessage}
                 </pre>
               )}
@@ -577,12 +670,35 @@ export const CheckoutModal: React.FC = () => {
             </div>
           )}
 
-          {/* Botão Principal de Disparo via WhatsApp */}
-          <div className="pt-1 pb-2">
+          {/* Botões de Ação: Copiar Resumo (Secundário) + Enviar Pedido via WhatsApp (Principal) */}
+          <div className="pt-1 pb-2 flex flex-col sm:flex-row gap-2.5">
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className={`sm:w-auto py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                copiedSummary
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
+              }`}
+              title="Copiar o texto completo do pedido para colar manualmente"
+            >
+              {copiedSummary ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Resumo Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copiar Resumo do Pedido</span>
+                </>
+              )}
+            </button>
+
             <button
               type="submit"
               disabled={!store.is_open || belowMinOrder}
-              className={`w-full py-4 px-5 rounded-2xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer ${
+              className={`flex-1 py-4 px-5 rounded-2xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer ${
                 !store.is_open || belowMinOrder
                   ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
                   : 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white shadow-emerald-600/25'

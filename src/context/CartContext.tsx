@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { CartItem, Product } from '../types/catalog';
-import { getEffectivePrice } from '../lib/whatsapp';
+import { CartItem, Product, ProductAddon } from '../types/catalog';
+import { getCartItemUnitPrice } from '../lib/whatsapp';
 
-const CART_STORAGE_KEY = 'zapcatalogo_cart_v1';
+const CART_STORAGE_KEY = 'zapcatalogo_cart_v2';
 
 interface CartContextData {
   items: CartItem[];
@@ -10,26 +10,58 @@ interface CartContextData {
   subtotal: number;
   isCheckoutOpen: boolean;
   setIsCheckoutOpen: (open: boolean) => void;
+  customizingProduct: Product | null;
+  openProductModal: (product: Product) => void;
+  closeProductModal: () => void;
+  addCustomizedItem: (
+    product: Product,
+    quantity: number,
+    selectedAddons: ProductAddon[],
+    notes: string
+  ) => void;
   addItem: (product: Product, notes?: string) => void;
+  incrementCartItem: (cartItemId: string) => void;
+  decrementCartItem: (cartItemId: string) => void;
   decrementItem: (productId: string) => void;
-  removeItem: (productId: string) => void;
-  updateItemNotes: (productId: string, notes: string) => void;
+  removeItem: (cartItemIdOrProductId: string) => void;
+  updateItemNotes: (cartItemId: string, notes: string) => void;
   getItemQuantity: (productId: string) => number;
   clearCart: () => void;
 }
 
 const CartContext = createContext<CartContextData | null>(null);
 
+function buildCartItemSignature(
+  productId: string,
+  addons: ProductAddon[],
+  notes: string
+): string {
+  const addonIds = [...addons]
+    .map((a) => a.id)
+    .sort()
+    .join(',');
+  return `${productId}__${addonIds}__${notes.trim().toLowerCase()}`;
+}
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as CartItem[]) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved) as CartItem[];
+      return parsed.map((item) => ({
+        ...item,
+        cartItemId: item.cartItemId || `${item.product.id}__default`,
+        selectedAddons: Array.isArray(item.selectedAddons) ? item.selectedAddons : [],
+        notes: item.notes || '',
+      }));
     } catch {
       return [];
     }
   });
+
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     try {
@@ -39,45 +71,108 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items]);
 
-  const addItem = (product: Product, notes = '') => {
+  const openProductModal = (product: Product) => {
+    setCustomizingProduct(product);
+  };
+
+  const closeProductModal = () => {
+    setCustomizingProduct(null);
+  };
+
+  const addCustomizedItem = (
+    product: Product,
+    quantity: number,
+    selectedAddons: ProductAddon[],
+    notes: string
+  ) => {
+    const sig = buildCartItemSignature(product.id, selectedAddons, notes);
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      const existing = prev.find((i) => i.cartItemId === sig);
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id
+          i.cartItemId === sig
             ? {
                 ...i,
                 product,
-                quantity: i.quantity + 1,
-                notes: notes || i.notes,
+                quantity: i.quantity + quantity,
               }
             : i
         );
       }
-      return [...prev, { product, quantity: 1, notes }];
+      return [
+        ...prev,
+        {
+          cartItemId: sig,
+          product,
+          quantity,
+          notes: notes.trim(),
+          selectedAddons,
+        },
+      ];
     });
   };
 
-  const decrementItem = (productId: string) => {
+  const addItem = (product: Product, notes = '') => {
+    addCustomizedItem(product, 1, [], notes);
+  };
+
+  const incrementCartItem = (cartItemId: string) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.cartItemId === cartItemId ? { ...i, quantity: i.quantity + 1 } : i
+      )
+    );
+  };
+
+  const decrementCartItem = (cartItemId: string) => {
     setItems((prev) =>
       prev
-        .map((i) => (i.product.id === productId ? { ...i, quantity: i.quantity - 1 } : i))
+        .map((i) =>
+          i.cartItemId === cartItemId ? { ...i, quantity: i.quantity - 1 } : i
+        )
         .filter((i) => i.quantity > 0)
     );
   };
 
-  const removeItem = (productId: string) => {
-    setItems((prev) => prev.filter((i) => i.product.id !== productId));
+  const decrementItem = (productId: string) => {
+    setItems((prev) => {
+      const targetIndex = [...prev]
+        .reverse()
+        .findIndex((i) => i.product.id === productId);
+      if (targetIndex === -1) return prev;
+      const actualIndex = prev.length - 1 - targetIndex;
+      return prev
+        .map((item, idx) =>
+          idx === actualIndex ? { ...item, quantity: item.quantity - 1 } : item
+        )
+        .filter((item) => item.quantity > 0);
+    });
   };
 
-  const updateItemNotes = (productId: string, notes: string) => {
+  const removeItem = (cartItemIdOrProductId: string) => {
     setItems((prev) =>
-      prev.map((i) => (i.product.id === productId ? { ...i, notes } : i))
+      prev.filter(
+        (i) =>
+          i.cartItemId !== cartItemIdOrProductId &&
+          i.product.id !== cartItemIdOrProductId
+      )
+    );
+  };
+
+  const updateItemNotes = (cartItemId: string, notes: string) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.cartItemId === cartItemId || i.product.id === cartItemId
+          ? { ...i, notes }
+          : i
+      )
     );
   };
 
   const getItemQuantity = (productId: string): number => {
-    return items.find((i) => i.product.id === productId)?.quantity ?? 0;
+    return items
+      .filter((i) => i.product.id === productId)
+      .reduce((sum, i) => sum + i.quantity, 0);
   };
 
   const clearCart = () => setItems([]);
@@ -90,7 +185,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const subtotal = useMemo(
     () =>
       items.reduce(
-        (acc, item) => acc + getEffectivePrice(item.product) * item.quantity,
+        (acc, item) => acc + getCartItemUnitPrice(item) * item.quantity,
         0
       ),
     [items]
@@ -104,7 +199,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         subtotal,
         isCheckoutOpen,
         setIsCheckoutOpen,
+        customizingProduct,
+        openProductModal,
+        closeProductModal,
+        addCustomizedItem,
         addItem,
+        incrementCartItem,
+        decrementCartItem,
         decrementItem,
         removeItem,
         updateItemNotes,

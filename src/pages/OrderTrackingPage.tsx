@@ -316,6 +316,11 @@ export const OrderTrackingPage: React.FC = () => {
                   >
                     <span>
                       <strong>{item.quantity}x</strong> {item.name}
+                      {item.addons && item.addons.length > 0 ? (
+                        <span className="block text-xs text-orange-700 font-medium">
+                          + {item.addons.map((a) => a.name).join(', ')}
+                        </span>
+                      ) : null}
                       {item.notes ? (
                         <em className="text-slate-500 block text-xs">
                           Obs: {item.notes}

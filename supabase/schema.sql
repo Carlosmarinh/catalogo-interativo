@@ -183,6 +183,25 @@ alter publication supabase_realtime add table public.products;
 alter publication supabase_realtime add table public.orders;
 
 -- ----------------------------------------------------------------------------
+-- 5.1 SUPABASE STORAGE (Bucket público para fotos de produtos: product-images)
+-- ----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Leitura publica de fotos de produtos" on storage.objects;
+create policy "Leitura publica de fotos de produtos"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'product-images');
+
+drop policy if exists "Upload de fotos de produtos" on storage.objects;
+create policy "Upload de fotos de produtos"
+  on storage.objects for insert
+  to anon, authenticated
+  with check (bucket_id = 'product-images');
+
+-- ----------------------------------------------------------------------------
 -- 6. SEED INICIAL (Loja + Categorias + Produtos de Demonstração)
 -- ----------------------------------------------------------------------------
 insert into public.stores (

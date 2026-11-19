@@ -8,8 +8,14 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
+  KeyRound,
+  Play,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import {
+  DEMO_TEST_EMAIL,
+  DEMO_TEST_PASSWORD,
+  useAuth,
+} from '../context/AuthContext';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 export const AdminLoginPage: React.FC = () => {
@@ -24,6 +30,16 @@ export const AdminLoginPage: React.FC = () => {
   if (isAuthenticated) {
     return <Navigate to="/admin/painel" replace />;
   }
+
+  const handleFillDemoCredentials = () => {
+    setMode('login');
+    setEmail(DEMO_TEST_EMAIL);
+    setPassword(DEMO_TEST_PASSWORD);
+    setError(null);
+    setInfoMessage(
+      'Credenciais de teste preenchidas! Clique em "Entrar no Painel" abaixo para acessar.'
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,33 +93,45 @@ export const AdminLoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Botão de Acesso Instantâneo para Demonstração */}
-          <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 space-y-2.5">
+          {/* Card Modo Demonstração / Portfólio para Recrutadores e Clientes */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500/15 to-amber-500/5 border border-orange-500/30 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-orange-300 flex items-center gap-1.5">
+              <span className="text-xs font-extrabold text-orange-300 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4" />
-                Acesso Rápido de Demonstração
+                Modo Demonstração / Portfólio
               </span>
               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300">
-                1 Clique
+                Acesso Livre
               </span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Teste agora o CRUD completo de produtos, pausa de itens e configuração de WhatsApp com sincronização imediata na vitrine.
+              Visitante ou recrutador? Preencha as credenciais de teste ou entre direto com 1 clique para explorar o CRUD de produtos, duplicação e gestão de pedidos.
             </p>
-            <button
-              type="button"
-              onClick={loginDemo}
-              className="w-full py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs sm:text-sm transition-colors shadow-md shadow-orange-500/20 cursor-pointer"
-            >
-              Entrar no Painel Administrativo Agora
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleFillDemoCredentials}
+                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-orange-300 border border-orange-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Preencher credenciais de teste</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={loginDemo}
+                className="py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-orange-500/20 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>Entrar com 1 Clique</span>
+              </button>
+            </div>
           </div>
 
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-800" />
             <span className="shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-              Ou acesse via Supabase Auth
+              Login do Estabelecimento
             </span>
             <div className="flex-grow border-t border-slate-800" />
           </div>
@@ -161,12 +189,12 @@ export const AdminLoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 transition-colors cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm transition-colors shadow-lg shadow-orange-500/20 cursor-pointer"
             >
               {submitting
                 ? 'Autenticando...'
                 : mode === 'login'
-                ? 'Entrar com Supabase Auth'
+                ? 'Entrar no Painel'
                 : 'Criar Conta de Lojista'}
             </button>
           </form>

@@ -1,6 +1,51 @@
-import { Store, Category, Product, Order } from '../types/catalog';
+import { Store, Category, Product, Order, ProductAddon } from '../types/catalog';
 
 export const DEFAULT_STORE_ID = '00000000-0000-0000-0000-000000000001';
+
+export const DEFAULT_BURGER_ADDONS: ProductAddon[] = [
+  { id: 'addon-bacon', name: 'Bacon crocante extra', price: 4.0 },
+  { id: 'addon-cheddar', name: 'Cheddar inglês cremoso', price: 3.5 },
+  { id: 'addon-smash', name: 'Blend extra 90g na brasa', price: 9.0 },
+  { id: 'addon-cebola', name: 'Cebola caramelizada no melaço', price: 3.0 },
+  { id: 'addon-maionese', name: 'Potinho de maionese trufada', price: 3.5 },
+];
+
+export const DEFAULT_PIZZA_ADDONS: ProductAddon[] = [
+  { id: 'addon-borda-catupiry', name: 'Borda recheada com Catupiry Original', price: 9.0 },
+  { id: 'addon-borda-cheddar', name: 'Borda recheada com Cheddar', price: 9.0 },
+  { id: 'addon-bufala', name: 'Extra de muçarela de búfala', price: 8.5 },
+  { id: 'addon-pepperoni', name: 'Extra de pepperoni crocante', price: 7.5 },
+  { id: 'addon-hothoney', name: 'Fio de mel picante (Hot Honey)', price: 4.0 },
+];
+
+export const DEFAULT_PORCAO_ADDONS: ProductAddon[] = [
+  { id: 'addon-porcao-bacon', name: 'Farofa de bacon extra', price: 4.5 },
+  { id: 'addon-porcao-cheddar', name: 'Cobertura extra de cheddar', price: 4.0 },
+  { id: 'addon-porcao-maionese', name: 'Maionese verde da casa', price: 3.0 },
+];
+
+export const DEFAULT_SOBREMESA_ADDONS: ProductAddon[] = [
+  { id: 'addon-sorvete', name: 'Bola extra de sorvete de baunilha', price: 6.0 },
+  { id: 'addon-pistache', name: 'Calda extra de pistache', price: 5.5 },
+];
+
+export function getProductAvailableAddons(product: Product): ProductAddon[] {
+  if (product.addons && product.addons.length > 0) {
+    return product.addons;
+  }
+  switch (product.category_id) {
+    case '10000000-0000-0000-0000-000000000001': // Lanches
+      return DEFAULT_BURGER_ADDONS;
+    case '10000000-0000-0000-0000-000000000002': // Pizzas
+      return DEFAULT_PIZZA_ADDONS;
+    case '10000000-0000-0000-0000-000000000003': // Porções
+      return DEFAULT_PORCAO_ADDONS;
+    case '10000000-0000-0000-0000-000000000005': // Sobremesas
+      return DEFAULT_SOBREMESA_ADDONS;
+    default:
+      return [];
+  }
+}
 
 export const INITIAL_STORE: Store = {
   id: DEFAULT_STORE_ID,

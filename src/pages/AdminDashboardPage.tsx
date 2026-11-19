@@ -16,6 +16,7 @@ import {
   LogOut,
   Database,
   ClipboardList,
+  CopyPlus,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCatalog } from '../context/CatalogContext';
@@ -38,6 +39,7 @@ export const AdminDashboardPage: React.FC = () => {
     isSupabaseMode,
     toggleStoreOpen,
     saveProduct,
+    duplicateProduct,
     deleteProduct,
     toggleProductAvailability,
     toggleProductFeatured,
@@ -379,6 +381,17 @@ export const AdminDashboardPage: React.FC = () => {
                         title="Alternar Destaque no topo da vitrine"
                       >
                         <Sparkles className="w-4 h-4" />
+                      </button>
+
+                      {/* Duplicar Produto */}
+                      <button
+                        type="button"
+                        onClick={() => duplicateProduct(product.id)}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/70 text-xs font-bold transition-colors cursor-pointer"
+                        title="Duplicar produto para criar variação rápida"
+                      >
+                        <CopyPlus className="w-3.5 h-3.5" />
+                        <span>Duplicar</span>
                       </button>
 
                       {/* Editar */}

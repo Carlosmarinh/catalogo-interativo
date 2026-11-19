@@ -206,8 +206,20 @@ export const OrdersManagerPanel: React.FC = () => {
                           </span>
                           <span>{formatCurrency(item.unit_price * item.quantity)}</span>
                         </div>
+                        {item.addons && item.addons.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {item.addons.map((a) => (
+                              <span
+                                key={a.id}
+                                className="text-[11px] font-semibold text-orange-700 bg-orange-100/70 px-1.5 py-0.2 rounded"
+                              >
+                                + {a.name} ({formatCurrency(a.price)})
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {item.notes && (
-                          <span className="block text-[11px] text-orange-700 italic mt-0.5">
+                          <span className="block text-[11px] text-slate-600 italic mt-0.5">
                             Obs: {item.notes}
                           </span>
                         )}

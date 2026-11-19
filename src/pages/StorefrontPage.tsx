@@ -11,6 +11,7 @@ import {
 import { ProductCard } from '../components/storefront/ProductCard';
 import { FloatingCartBar } from '../components/storefront/FloatingCartBar';
 import { CheckoutModal } from '../components/storefront/CheckoutModal';
+import { ProductDetailModal } from '../components/storefront/ProductDetailModal';
 
 export const StorefrontPage: React.FC = () => {
   const { store, categories, products, orders, loading } = useCatalog();
@@ -239,6 +240,7 @@ export const StorefrontPage: React.FC = () => {
         )}
       </main>
 
+      <ProductDetailModal />
       <FloatingCartBar />
       <CheckoutModal />
     </div>

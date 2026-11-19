@@ -23,6 +23,12 @@ export interface Category {
   sort_order: number;
 }
 
+export interface ProductAddon {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface Product {
   id: string;
   store_id: string;
@@ -34,14 +40,17 @@ export interface Product {
   image_url: string;
   is_available: boolean;
   is_featured: boolean;
+  addons?: ProductAddon[];
   created_at?: string;
   updated_at?: string;
 }
 
 export interface CartItem {
+  cartItemId: string;
   product: Product;
   quantity: number;
   notes: string;
+  selectedAddons: ProductAddon[];
 }
 
 export type DeliveryMethod = 'delivery' | 'pickup';
@@ -56,6 +65,7 @@ export interface CheckoutForm {
   neighborhood: string;
   complement: string;
   paymentMethod: PaymentMethod;
+  needChange: boolean;
   cashChangeFor: string;
   generalNotes: string;
 }
@@ -65,6 +75,7 @@ export interface OrderItemSnapshot {
   name: string;
   quantity: number;
   unit_price: number;
+  addons?: ProductAddon[];
   notes: string;
 }
 
